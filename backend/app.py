@@ -4,11 +4,22 @@ import sqlite3
 import json
 from datetime import datetime
 import os
+import logging
 from pydantic import BaseModel, Field, ValidationError
 from typing import Literal
 
+# Setup logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={
+    r"/api/*": {
+        "origins": "*",
+        "methods": ["GET", "POST", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }
+})
 
 # Define valid categories
 VALID_CATEGORIES = ['University', 'Jobs', 'Personal', 'Other']
@@ -54,10 +65,16 @@ init_db()
 def add_email():
     """Receive email from n8n workflow"""
     try:
+        logger.info(f"Received request: {request.method}")
+        logger.info(f"Content-Type: {request.content_type}")
+        logger.info(f"Raw data: {request.data}")
+        
         data = request.json
+        logger.info(f"Parsed JSON: {data}")
         
         # Validate against schema
         email = EmailSchema(**data)
+        logger.info(f"Validated email: {email}")
         
         # Save to database
         conn = get_db()
@@ -70,12 +87,22 @@ def add_email():
         email_id = c.lastrowid
         conn.close()
         
+        logger.info(f"Email saved with ID: {email_id}")
         return jsonify({'success': True, 'id': email_id}), 201
         
     except ValidationError as e:
-        return jsonify({'error': 'Invalid request data', 'details': e.errors()}), 400
+        logger.error(f"Validation error: {e.errors()}")
+        return jsonify({
+            'error': 'Invalid request data',
+            'details': e.errors(),
+            'received': data if 'data' in locals() else None
+        }), 400
+    except ValueError as e:
+        logger.error(f"JSON parsing error: {str(e)}")
+        return jsonify({'error': 'Invalid JSON format'}), 400
     except Exception as e:
-        return jsonify({'error': f'Database error: {str(e)}'}), 500
+        logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+        return jsonify({'error': f'Server error: {str(e)}'}), 500
 
 @app.route('/api/emails', methods=['GET'])
 def get_emails():
@@ -87,6 +114,20 @@ def get_emails():
     conn.close()
     
     return jsonify(emails)
+
+@app.route('/api/test', methods=['GET', 'POST', 'OPTIONS'])
+def test_endpoint():
+    """Test endpoint to verify connectivity and CORS"""
+    if request.method == 'OPTIONS':
+        return '', 204
+    
+    logger.info(f"Test endpoint hit - Method: {request.method}, Content-Type: {request.content_type}")
+    return jsonify({
+        'status': 'ok',
+        'method': request.method,
+        'message': 'Backend is reachable',
+        'received_data': request.json if request.is_json else None
+    }), 200
 
 @app.route('/api/analytics', methods=['GET'])
 def get_analytics():
