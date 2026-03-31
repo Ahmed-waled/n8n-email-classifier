@@ -55,7 +55,8 @@
           <pre>{
   "sender": "john@example.com",
   "subject": "Email Subject",
-  "category": "University"
+  "category": "University",
+  "summary": "summary of the email body"
 }</pre>
           <p style="margin-top: 10px;"><small>Categories: <code>University</code>, <code>Jobs</code>, <code>Personal</code>, <code>Other</code></small></p>
         </div>
@@ -120,7 +121,7 @@ export default {
     setInterval(() => {
       this.fetchEmails()
       this.fetchAnalytics()
-    }, 5000)
+    }, 30000)
   }
 }
 </script>
