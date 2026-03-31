@@ -1,5 +1,7 @@
 # Email Automation Dashboard
 
+![alt text](image.png)
+
 A modern n8n workflow showcase project for categorizing, analyzing, and displaying emails with a beautiful dashboard UI.
 
 ## Features
